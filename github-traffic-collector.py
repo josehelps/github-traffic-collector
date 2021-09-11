@@ -4,24 +4,51 @@ from github import Github, GithubException
 from modules.CustomConfigParser import CustomConfigParser
 from modules import logger
 from pathlib import Path
+from tqdm import tqdm
+import json
+import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 VERSION = 1
 
-def write_traffic(event, output_path):
+def send_to_splunk(traffic_stats, config, log):
+    full_url = config['splunk_host']+'/services/collector/raw'
+    http = urllib3.PoolManager(cert_reqs='CERT_NONE', assert_hostname=False)
+    urllib3.disable_warnings()
+    headers={'Content-Type': 'application/json', 'Authorization':'Splunk '+config['splunk_hec_token']}
+    for stat in traffic_stats:
+        data = json.dumps(stat).encode('utf8')
+        r = http.request('POST', full_url, body=data, headers=headers)
+        if r.status == 200:
+            log.info("successfully posted event: {0} to splunk: {1} via HEC".format(stat,full_url))
+        else:
+            log.error("posting event {0} to splunk: {1} via HEC with return code: {2} and data: {3}".format(stat,full_url,r.status, r.data))
+     
+
+def write_traffic(traffic_stats, output_path, log):
     try:
         with open(output_path, 'a') as outfile:
-            json.dump(leaks, outfile)
-    except Exection as e:
+            json.dump(traffic_stats, outfile)
+    except Exception as e:
         log.error("writing result file: {0}".format(str(e)))
 
 
-def collect_traffic_stats(github_token, tracking_repos):
+def collect_traffic_stats(github_token, tracking_repos, log):
+    traffic_stats = []
     g = Github(login_or_token=github_token, per_page=100)
-    for repo in g.get_user().get_repos():
-        if repo in tracking_repos:
-            print(repo.name)
-                #traffic = repo.get_views_traffic()
-                #print(traffic)
+    log.info("processing traffic stats for {0} out of {1} repos available to your github token.".format(len(tracking_repos),g.get_user().get_repos().totalCount))
+    for repo in tqdm(g.get_user().get_repos(), total=g.get_user().get_repos().totalCount):
+        if repo.name in tracking_repos:
+            traffic = repo.get_views_traffic()
+            for view in traffic['views']:
+                stat = dict()
+                stat['repo'] = repo.name
+                stat['count'] = view.count
+                stat['uniques'] = view.uniques
+                stat['timestamp'] = str(view.timestamp)
+                traffic_stats.append(stat)
+    return traffic_stats
 
 if __name__ == "__main__":
     # Setup arguments
@@ -47,8 +74,7 @@ if __name__ == "__main__":
     parser = CustomConfigParser()
     config = parser.load_conf(configpath)
 
-    log = logger.setup_logging(config['log_path'], config['log_level']
-)
+    log = logger.setup_logging(config['log_path'], config['log_level'])
     log.info("INIT - github-traffic-collector v" + str(VERSION))
 
     if ARG_VERSION:
@@ -61,11 +87,25 @@ if __name__ == "__main__":
         print("ERROR: github-traffic-collector failed to find a github_token in the config file at {0}..exiting".format(tool_config))
         sys.exit(1)
 
-    if len(config['github_repos'].split(",")) > 0 :
-        print(config['github_repos'].split(","))
-        collect_traffic_stats(github_token, config['github_repos'].split(","))
+    # collect github traffic stats
+    if config['github_repos'] != '' :
+        traffic_stats = collect_traffic_stats(github_token, config['github_repos'].split(","), log)
     else:
         print("ERROR: github-traffic-collector failed to find a github_repository to grab stats from, please see the config file at {0}..exiting".format(tool_config))
         sys.exit(1)
+
+    # write stats to disk
+    write_traffic(traffic_stats, config['output'], log)
+    log.info("sucessfully wrote {0} traffic stats to: {1}".format(len(traffic_stats),config['output']))
+
+    if config ['splunk_hec_token'] != '':
+        send_to_splunk(traffic_stats, config, log)
+    else:
+        log.error("splunk_hec_token is not set on config file {0}".format(tool_config))
+        sys.exit(1)
+
+
+
+    
 
 
