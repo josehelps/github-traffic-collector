@@ -40,7 +40,6 @@ def collect_traffic_stats(github_token, tracking_repos, log):
     log.info("processing traffic stats for {0} out of {1} repos available to your github token.".format(len(tracking_repos),g.get_user().get_repos().totalCount))
     for repo in tqdm(g.get_user().get_repos(), total=g.get_user().get_repos().totalCount):
         if repo.name in tracking_repos:
-            print("matched repo: {}".format(repo.name))
             traffic = repo.get_views_traffic()
             for view in traffic['views']:
                 stat = dict()
