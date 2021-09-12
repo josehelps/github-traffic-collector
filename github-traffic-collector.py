@@ -24,7 +24,7 @@ def send_to_splunk(traffic_stats, config, log):
             log.info("successfully posted event: {0} to splunk: {1} via HEC".format(stat,full_url))
         else:
             log.error("posting event {0} to splunk: {1} via HEC with return code: {2} and data: {3}".format(stat,full_url,r.status, r.data))
-     
+
 
 def write_traffic(traffic_stats, output_path, log):
     try:
@@ -40,6 +40,7 @@ def collect_traffic_stats(github_token, tracking_repos, log):
     log.info("processing traffic stats for {0} out of {1} repos available to your github token.".format(len(tracking_repos),g.get_user().get_repos().totalCount))
     for repo in tqdm(g.get_user().get_repos(), total=g.get_user().get_repos().totalCount):
         if repo.name in tracking_repos:
+            print("matched repo: {}".format(repo.name))
             traffic = repo.get_views_traffic()
             for view in traffic['views']:
                 stat = dict()
@@ -89,7 +90,7 @@ if __name__ == "__main__":
 
     # collect github traffic stats
     if config['github_repos'] != '' :
-        traffic_stats = collect_traffic_stats(github_token, config['github_repos'].split(","), log)
+        traffic_stats = collect_traffic_stats(github_token, config['github_repos'].replace(" ", "").split(","), log)
     else:
         print("ERROR: github-traffic-collector failed to find a github_repository to grab stats from, please see the config file at {0}..exiting".format(tool_config))
         sys.exit(1)
@@ -103,9 +104,3 @@ if __name__ == "__main__":
     else:
         log.error("splunk_hec_token is not set on config file {0}".format(tool_config))
         sys.exit(1)
-
-
-
-    
-
-
