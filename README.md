@@ -50,12 +50,10 @@ splunk_hec_token =
 ### Usage
 
 ```
-usage: git-wild-hunt.py [-h] -s SEARCH [-c CONFIG] [-v]
+usage: github-traffic-collector.py [-h] -s SEARCH [-c CONFIG] [-v]
 
 optional arguments:
   -h, --help            show this help message and exit
-  -s SEARCH, --search SEARCH
-                        search to execute
   -c CONFIG, --config CONFIG
                         config file path
   -v, --version         shows current git-wild-hunt version
