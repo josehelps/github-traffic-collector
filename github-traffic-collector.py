@@ -6,6 +6,7 @@ from modules import logger
 from pathlib import Path
 from tqdm import tqdm
 import json
+from datetime import datetime
 # import requests
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -59,13 +60,46 @@ def collect_traffic_stats(github_token, tracking_repos, log):
             ):
         if repo.name in tracking_repos:
             traffic = repo.get_views_traffic()
+            paths = repo.get_top_paths()
+            clones = repo.get_clones_traffic()
+            referrers = repo.get_top_referrers()
+            now = datetime.now()
+            
             for view in traffic['views']:
                 stat = dict()
+                stat['type'] = "view"
                 stat['repo'] = repo.name
                 stat['count'] = view.count
                 stat['uniques'] = view.uniques
                 stat['timestamp'] = str(view.timestamp)
                 traffic_stats.append(stat)
+            for path in paths:
+                stat = dict()
+                stat['type'] = "path"
+                stat['repo'] = repo.name
+                stat['count'] = path.count
+                stat['uniques'] = path.uniques
+                stat['path'] = path.path
+                stat['timestamp'] = str(now.strftime("%Y-%m-%dT%H:%M:%S"))
+                traffic_stats.append(stat)
+            for clone in clones['clones']:
+                stat = dict()
+                stat['type'] = "clone"
+                stat['repo'] = repo.name
+                stat['count'] = clone.count
+                stat['uniques'] = clone.uniques
+                stat['timestamp'] = str(clone.timestamp)
+                traffic_stats.append(stat)
+            for referrer in referrers:
+                stat = dict()
+                stat['type'] = "referrer"
+                stat['repo'] = repo.name
+                stat['count'] = referrer.count
+                stat['uniques'] = referrer.uniques
+                stat['referrer'] = referrer.referrer
+                stat['timestamp'] = str(now.strftime("%Y-%m-%dT%H:%M:%S"))
+                traffic_stats.append(stat)
+
     return traffic_stats
 
 
