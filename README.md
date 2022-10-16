@@ -66,7 +66,7 @@ The tool uses the `/services/collector/raw` endpoint to post events to splunk. K
 
 ### Author
 
-* Jose Hernandez [@d1vious](https://twitter.com/d1vious)
+* Jose Hernandez [@_josehelps](https://twitter.com/_josehelps)
 
 ### Contributor 
  * Adam Mashinchi [@Adam_Mashinchi](https://twitter.com/Adam_Mashinchi)
